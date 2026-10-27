@@ -1,0 +1,3 @@
+Extra: fino a 20 clip, numerate 01.mp3 ... 20.mp3. Il numero corrisponde alla posizione nella tendina (01 = prima icona in alto a sinistra). Il Jolly pesca da qui tra quelle non assegnate.
+
+Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa un suono segnaposto.

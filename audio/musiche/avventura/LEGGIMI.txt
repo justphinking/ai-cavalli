@@ -1,0 +1,3 @@
+Musica Avventura: metti qui 3 clip (es. 1.mp3, 2.mp3, 3.mp3). A ogni tocco ne parte una a caso, in loop.
+
+Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa un suono segnaposto.
