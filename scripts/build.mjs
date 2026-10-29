@@ -6,7 +6,7 @@ const out = 'dist';
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
 
-for (const f of ['index.html', 'styles.css', 'manifest.webmanifest']) fs.copyFileSync(f, path.join(out, f));
+for (const f of ['index.html', 'styles.css', 'manifest.webmanifest', 'aiutini.txt']) fs.copyFileSync(f, path.join(out, f));
 for (const d of ['js', 'icons', 'audio']) if (fs.existsSync(d)) fs.cpSync(d, path.join(out, d), { recursive: true });
 
 const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|webm|flac)$/i;

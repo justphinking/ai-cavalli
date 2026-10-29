@@ -1,0 +1,5 @@
+# Testi dell'Aiutino: una frase (o due) per riga.
+# Le righe che iniziano con # e quelle vuote vengono ignorate.
+Il protagonista ha un segreto che nessuno al villaggio conosce: sa parlare con i cavalli.
+All'improvviso arriva una lettera senza mittente. Dentro c'è solo una mappa disegnata a matita.
+Nel saloon entra uno straniero con un cappello enorme. Cerca qualcuno, ma non dice chi.

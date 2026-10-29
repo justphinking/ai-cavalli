@@ -1,3 +1,0 @@
-Porta del saloon: 1 clip. Suona prima della frase imprevisto.
-
-Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa un suono segnaposto.

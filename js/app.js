@@ -18,47 +18,37 @@ const ACC = [
   { id: 'battuta', label: 'Battuta', icon: 'M4 15c0-2 3.6-3.5 8-3.5s8 1.5 8 3.5-3.6 3.5-8 3.5-8-1.5-8-3.5z M4 15v3c0 2 3.6 3.5 8 3.5s8-1.5 8-3.5v-3 M9 10L6 3 M15 10l3-7' },
   { id: 'jolly', label: 'Jolly', icon: 'M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z' }
 ];
-// Icone segnaposto delle 20 opzioni Extra (nell'ordine dei file audio/extra/01…20)
-const ICONS = [
-  'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z', 'M5 5h14v14H5z', 'M12 4l8 15H4z', 'M12 3l8 9-8 9-8-9z',
-  'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z',
-  'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
-  'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z M10 21h4', 'M13 2L5 13h6l-1 9 8-11h-6z',
-  'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
-  'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9L7 7 M17 17l2.1 2.1 M4.9 19.1L7 17 M17 7l2.1-2.1',
-  'M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z', 'M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z',
-  'M12 21a6 6 0 0 0 6-6c0-4-3-6-4-10-1 3-3 4-3 4s-1-2-1-4c-2 2-4 5-4 10a6 6 0 0 0 6 6z',
-  'M2 12c2.5-4 5-4 7.5 0s5 4 7.5 0 3.5-2 5-1', 'M5 19C5 10 11 5 20 4c-1 9-6 15-15 15z M5 19l8-8',
-  'M8 15a3.5 3.5 0 1 0 0-7a3.5 3.5 0 1 0 0 7z M11.5 11.5H21 M18 11.5v3 M21 11.5v2',
-  'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
-  'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 7v5l3 2', 'M6 21V4h12v17 M3 21h18 M14 12h1',
-  'M9 18V5l10-2v13 M6.5 15.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M16.5 13.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z'
-];
 const Q = 'M8.8 9a3.3 3.3 0 1 1 4.6 3c-.9.4-1.4 1.2-1.4 2.1V15 M12 19h.01';
-const N_EXTRA = 3, MAX_REC = 50, MAX_SEC = 30;
+const N_SYNTH_EXTRA = 20, JOLLY_MAX = 3, MAX_REC = 50, MAX_SEC = 30;
+const MUSIC_GAIN = .8, DUCK = .35;           // durante "?" e Jolly la musica scende al 35%
+const AIUTINI_FALLBACK = ['Un personaggio scopre di avere un fratello gemello.'];
+
 const svg = (d, s, w) => '<svg width="' + (s || 24) + '" height="' + (s || 24) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const rndInt = n => Math.floor(Math.random() * n);
+const pickFrom = arr => arr[rndInt(arr.length)];
 const $ = id => document.getElementById(id);
 
 /* ================= stato ================= */
-const KEY = 'aicavalli.extras.v2';
-let extras = Array(N_EXTRA).fill(null);
-try {
-  const s = JSON.parse(localStorage.getItem(KEY));
-  if (Array.isArray(s) && s.length === N_EXTRA) extras = s.map(x => Number.isInteger(x) && x >= 0 && x < ICONS.length ? x : null);
-} catch (e) { }
-const saveExtras = () => { try { localStorage.setItem(KEY, JSON.stringify(extras)); } catch (e) { } };
+let story = false, paused = false, musicId = null, musicVoice = null, ambVoice = null;
+// stato della singola storia (si azzera con Riavvia)
+let xUsed = [false, false, false, false];   // i 4 tasti "?"
+let xClipsUsed = new Set();                 // clip della cartella extra già suonate
+let jollyCount = 0, jollyUsed = new Set();  // registrazioni già suonate dal Jolly
+let aiutoUsed = false;
 
-let story = false, paused = false, menuFor = null, musicId = null, musicVoice = null, impUsed = false;
 let recs = [];
 let files = {};
+let aiutini = AIUTINI_FALLBACK;
 
 fetch('audio-manifest.json', { cache: 'no-cache' })
   .then(r => r.ok ? r.json() : {})
   .then(m => { files = m || {}; warmCache(); })
   .catch(() => { });
-
-listRecs().then(r => { recs = r.sort((a, b) => a.created - b.created); draw(); drawImp(); }).catch(() => { });
+fetch('aiutini.txt', { cache: 'no-cache' })
+  .then(r => r.ok ? r.text() : '')
+  .then(t => { const l = t.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#')); if (l.length) aiutini = l; })
+  .catch(() => { });
+listRecs().then(r => { recs = r.sort((a, b) => a.created - b.created); draw(); drawRec(); }).catch(() => { });
 
 /* ================= motore audio ================= */
 let ctx = null, master = null, synth = null;
@@ -91,6 +81,7 @@ function play(buffer, o) {
   src.onended = () => {
     voices.delete(v);
     if (v === musicVoice) { musicVoice = null; musicId = null; draw(); }
+    if (v === ambVoice) ambVoice = null;
     if (o.onEnd) o.onEnd(v, ctx.currentTime >= v.endAt - .06);
   };
   src.start(now);
@@ -108,6 +99,19 @@ function fade(v, secs) {
 const fadeAll = (secs, except) => voices.forEach(v => { if (v !== except) fade(v, secs); });
 let mTok = 0;
 function clearMusic() { musicVoice = null; musicId = null; mTok++; }
+
+/* ---- abbassamento della musica sotto "?" e Jolly ---- */
+let duck = 0;
+const musicLevel = () => MUSIC_GAIN * (duck > 0 ? DUCK : 1);
+function applyDuck() {
+  if (!musicVoice) return;
+  const now = ctx.currentTime, g = musicVoice.g.gain;
+  try { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(musicLevel(), now + (duck > 0 ? .25 : .6)); } catch (e) { }
+}
+function playOver(buffer) {
+  duck++; applyDuck();
+  play(buffer, { onEnd: () => { duck = Math.max(0, duck - 1); applyDuck(); } });
+}
 
 /* ---- caricamento dei file dalle cartelle audio, con ripiego sui segnaposto ---- */
 const decoded = new Map(), synthCache = new Map();
@@ -127,12 +131,11 @@ async function getSound(folder, which, fbKey, fbCount, fbMake) {
     const i = which < 0 ? rndInt(list.length) : which;
     if (i < list.length) { try { return await loadUrl(list[i]); } catch (e) { } }
   }
-  const i = which < 0 ? rndInt(fbCount) : which;
+  const i = which < 0 ? rndInt(fbCount) : Math.min(which, fbCount - 1);
   const k = fbKey + i;
   if (!synthCache.has(k)) synthCache.set(k, fbMake(i));
   return synthCache.get(k);
 }
-// scarica in anticipo i file, così sono pronti anche senza rete
 function warmCache() {
   const all = Object.values(files).flat();
   let i = 0;
@@ -140,9 +143,62 @@ function warmCache() {
   setTimeout(next, 1500);
 }
 const sMusic = id => getSound('musiche/' + id, -1, 'm.' + id + '.', 3, i => synth.music(id, i));
-const sExtra = j => getSound('extra', j, 'x', ICONS.length, i => synth.extra(i));
 
-/* ================= azioni ================= */
+/* ================= schermata iniziale ================= */
+let ambPending = false;
+async function startAmbient() {
+  if (story || ambVoice || ambPending || location.hash === '#registrazioni') return;
+  ambPending = true;
+  ac();
+  $('hint').classList.add('off');
+  const b = await getSound('ambiente', -1, 'amb', 1, () => synth.ambiente());
+  ambPending = false;
+  if (story || ambVoice || location.hash === '#registrazioni') return;
+  ambVoice = play(b, { loop: true, fadeIn: 1.5, gain: .9 });
+}
+function stopAmbient(secs) { if (ambVoice && ctx) { fade(ambVoice, secs); ambVoice = null; } }
+
+$('screen-start').addEventListener('pointerdown', e => {
+  if (e.target.closest('#toRec') || e.target.closest('#cavStart')) return;
+  startAmbient();
+});
+
+$('aiuto').addEventListener('click', () => {
+  if (aiutoUsed) return;
+  aiutoUsed = true;
+  const box = $('aiutoBox');
+  box.textContent = pickFrom(aiutini); box.hidden = false;
+  draw();
+});
+
+function enterStory() {
+  ac();
+  story = true; resetSession();
+  fadeAll(1.5); ambVoice = null; clearMusic();
+  getSound('cavalli', 1, 'cav', 2, i => synth.cavalli(i)).then(b => { if (story) play(b, { fadeIn: 1.2 }); });
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cur = $('curtain'), r = $('cavStart').getBoundingClientRect();
+  cur.style.setProperty('--cx', (r.left + r.width / 2) + 'px');
+  cur.style.setProperty('--cy', (r.top + r.height / 2) + 'px');
+  cur.classList.remove('run'); void cur.offsetWidth; cur.classList.add('run');
+  setTimeout(() => { $('aiutoBox').hidden = true; route(); }, reduce ? 380 : 520);
+  setTimeout(() => cur.classList.remove('run'), reduce ? 950 : 1350);
+}
+// il tasto iniziale fa partire sempre la clip 2, comunque lo si prema
+const cavStart = $('cavStart');
+let startPointer = false;
+cavStart.addEventListener('pointerdown', () => { startPointer = true; });
+cavStart.addEventListener('pointerup', () => { if (startPointer && !story) enterStory(); });
+cavStart.addEventListener('pointercancel', () => { startPointer = false; });
+cavStart.addEventListener('contextmenu', e => e.preventDefault());
+cavStart.addEventListener('click', () => { if (startPointer) { startPointer = false; return; } if (!story) enterStory(); });
+
+function resetSession() {
+  xUsed = [false, false, false, false]; xClipsUsed = new Set();
+  jollyCount = 0; jollyUsed = new Set(); duck = 0;
+}
+
+/* ================= azioni della storia ================= */
 async function doMusic(id) {
   ac();
   if (musicId === id && musicVoice) { fade(musicVoice, .5); clearMusic(); draw(); return; }
@@ -150,7 +206,7 @@ async function doMusic(id) {
   const b = await sMusic(id);
   if (tok !== mTok) return;
   if (musicVoice) fade(musicVoice, .6);
-  musicVoice = play(b, { loop: true, fadeIn: .6, gain: .8 });
+  musicVoice = play(b, { loop: true, fadeIn: .6, gain: musicLevel() });
   musicId = id; draw();
 }
 
@@ -168,47 +224,38 @@ async function doAccent(id) {
   } else if (id === 'battuta') {
     play(await getSound('accenti/battuta', -1, 'battuta', 3, i => synth.battuta(i)));
   } else if (id === 'jolly') {
-    const pool = [];
-    for (let i = 0; i < ICONS.length; i++) if (!extras.includes(i)) pool.push(i);
-    if (pool.length) play(await sExtra(pool[rndInt(pool.length)]));
+    doJolly();
   }
 }
 
-async function playExtra(j) { ac(); play(await sExtra(j)); }
+// Jolly: una registrazione a caso, senza ripetizioni, fino a 3 volte per storia
+async function doJolly() {
+  const pool = recs.filter(r => !jollyUsed.has(r.id));
+  if (!story || jollyCount >= JOLLY_MAX || !pool.length) return;
+  const r = pickFrom(pool);
+  jollyCount++; jollyUsed.add(r.id); draw();
+  try { playOver(await loadRec(r)); } catch (e) { }
+}
 
-async function doCavalli() {
+// tasti "?": pescano tutti dalla cartella extra, senza ripetere una clip nella stessa storia
+async function doExtra(i) {
+  if (!story || xUsed[i]) return;
   ac();
-  if (!story) { startStory(); return; }
+  xUsed[i] = true; draw();
+  const list = files['extra'];
+  const n = list && list.length ? list.length : N_SYNTH_EXTRA;
+  const free = [];
+  for (let k = 0; k < n; k++) if (!xClipsUsed.has(k)) free.push(k);
+  if (!free.length) return;
+  const k = pickFrom(free); xClipsUsed.add(k);
+  playOver(await getSound('extra', k, 'x', N_SYNTH_EXTRA, j => synth.extra(j)));
+}
+
+// which: 0 = clip 1 (tocco normale), 1 = clip 2 (tenuto premuto 1,5 s)
+async function doCavalli(which) {
+  ac();
   fadeAll(1.5); clearMusic(); draw();
-  play(await getSound('cavalli', -1, 'cav', 3, i => synth.cavalli(i)), { fadeIn: 1.2 });
-}
-
-function startStory() {
-  story = true; impUsed = false; menuFor = null;
-  getSound('jingle', -1, 'jingle', 1, () => synth.jingle()).then(b => play(b));
-  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const cur = $('curtain'), r = $('cav').getBoundingClientRect();
-  cur.style.setProperty('--cx', (r.left + r.width / 2) + 'px');
-  cur.style.setProperty('--cy', (r.top + r.height / 2) + 'px');
-  cur.classList.remove('run'); void cur.offsetWidth; cur.classList.add('run');
-  setTimeout(draw, reduce ? 400 : 560);
-  setTimeout(() => cur.classList.remove('run'), reduce ? 1700 : 2100);
-}
-
-async function doImprevisto() {
-  if (!story || impUsed || !recs.length) return;
-  impUsed = true; draw();
-  ac();
-  voices.forEach(v => fade(v, .03)); clearMusic(); draw();
-  const rec = recs[rndInt(recs.length)];
-  const voiceP = loadRec(rec);
-  const door = await getSound('porta-saloon', -1, 'door', 1, () => synth.door());
-  play(door, {
-    onEnd: async (v, natural) => {
-      if (!natural) return;
-      try { play(await voiceP, { gain: 1 }); } catch (e) { }
-    }
-  });
+  play(await getSound('cavalli', which, 'cav', 2, i => synth.cavalli(i)), { fadeIn: 1.2 });
 }
 
 function togglePause() {
@@ -223,11 +270,15 @@ function restart() {
     voices.clear();
     if (paused) { paused = false; ctx.resume().catch(() => { }); }
   }
-  clearMusic(); story = false; impUsed = false; draw();
+  clearMusic(); ambVoice = null;
+  story = false; resetSession(); aiutoUsed = false;
+  $('aiutoBox').hidden = true; $('aiutoBox').textContent = '';
+  route();
+  startAmbient();
 }
 
-/* ================= schermata principale ================= */
-const musicEl = $('music'), accEl = $('acc'), menuEl = $('menu'), scrim = $('scrim'), middle = $('middle');
+/* ================= interfaccia della storia ================= */
+const musicEl = $('music'), accEl = $('acc');
 function flash(el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 350); }
 
 MUSIC.forEach(m => {
@@ -237,46 +288,52 @@ MUSIC.forEach(m => {
   b.addEventListener('click', () => doMusic(m.id));
   musicEl.appendChild(b);
 });
+let jollyBtn = null;
 ACC.forEach(a => {
   const b = document.createElement('button');
-  b.type = 'button'; b.className = 'a pad';
-  b.innerHTML = svg(a.icon) + '<span class="lab">' + a.label + '</span>';
-  b.addEventListener('click', () => { flash(b); doAccent(a.id); });
+  b.type = 'button'; b.className = 'a pad'; b.dataset.id = a.id;
+  b.innerHTML = svg(a.icon) + '<span class="lab">' + a.label + '</span>' + (a.id === 'jolly' ? '<span class="pips" aria-hidden="true"><i></i><i></i><i></i></span>' : '');
+  b.addEventListener('click', () => { if (b.disabled) return; flash(b); doAccent(a.id); });
+  if (a.id === 'jolly') jollyBtn = b;
   accEl.appendChild(b);
 });
 const xs = [...document.querySelectorAll('.x')];
-ICONS.forEach((d, j) => {
-  const b = document.createElement('button');
-  b.type = 'button'; b.className = 'opt'; b.setAttribute('aria-label', 'Suono ' + (j + 1)); b.innerHTML = svg(d);
-  b.addEventListener('click', () => {
-    if (menuFor === null) return;
-    const i = menuFor;
-    extras[i] = j; saveExtras(); closeMenu();
-    flash(xs[i]); playExtra(j);
-  });
-  menuEl.appendChild(b);
-});
 xs.forEach((el, i) => {
-  let timer = null, long = false;
-  el.addEventListener('pointerdown', () => {
-    long = false; clearTimeout(timer);
-    if (story) return;
-    timer = setTimeout(() => { long = true; openMenu(i); try { navigator.vibrate && navigator.vibrate(15); } catch (e) { } }, 500);
-  });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => clearTimeout(timer)));
-  el.addEventListener('contextmenu', e => e.preventDefault());
-  el.addEventListener('click', () => {
-    if (long) { long = false; return; }
-    if (extras[i] === null) { if (!story) openMenu(i); return; }
-    flash(el); playExtra(extras[i]);
-  });
+  el.innerHTML = svg(Q, 26, 2.4);
+  el.addEventListener('click', () => { if (el.disabled) return; flash(el); doExtra(i); });
 });
-function openMenu(i) { menuFor = i; draw(); }
-function closeMenu() { menuFor = null; draw(); }
-scrim.addEventListener('click', closeMenu);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuFor !== null) closeMenu(); });
-$('cav').addEventListener('click', () => { flash($('cav')); doCavalli(); });
-$('imp').addEventListener('click', () => { flash($('imp')); doImprevisto(); });
+
+/* Tasto centrale nella storia: tocco normale → clip 1; tenuto premuto 1,5 s → clip 2 */
+const cavEl = $('cav');
+const LONG_MS = 1500;
+let holdTimer = null, fired = false, pointerUsed = false, pressing = false;
+cavEl.addEventListener('pointerdown', e => {
+  if (!story) return;
+  pointerUsed = true; pressing = true; fired = false;
+  try { cavEl.setPointerCapture(e.pointerId); } catch (_) { }
+  cavEl.classList.remove('charging'); void cavEl.offsetWidth; cavEl.classList.add('charging');
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    if (!pressing) return;
+    fired = true; cavEl.classList.remove('charging');
+    try { navigator.vibrate && navigator.vibrate(25); } catch (_) { }
+    flash(cavEl); doCavalli(1);
+  }, LONG_MS);
+});
+function endPress(cancelled) {
+  if (!pressing) return;
+  pressing = false; clearTimeout(holdTimer); cavEl.classList.remove('charging');
+  if (fired) return;
+  if (!cancelled) { flash(cavEl); doCavalli(0); }
+}
+cavEl.addEventListener('pointerup', () => endPress(false));
+cavEl.addEventListener('pointercancel', () => endPress(true));
+cavEl.addEventListener('contextmenu', e => e.preventDefault());
+cavEl.addEventListener('click', () => {
+  if (pointerUsed) { pointerUsed = false; return; }
+  flash(cavEl); doCavalli(0); // tastiera
+});
+
 $('stop').addEventListener('click', () => {
   if (!ctx) return;
   if (paused) { paused = false; ctx.resume().catch(() => { }); }
@@ -291,37 +348,22 @@ function draw() {
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
   xs.forEach((el, i) => {
-    const ic = extras[i];
-    el.innerHTML = svg(ic === null ? Q : ICONS[ic], 26, ic === null ? 2.4 : 2);
-    el.classList.toggle('open', menuFor === i);
-    el.disabled = story && ic === null;
-    el.setAttribute('aria-label', 'Extra ' + (i + 1) + (ic === null ? ', da assegnare' : ''));
-    el.setAttribute('aria-expanded', menuFor === i ? 'true' : 'false');
+    el.disabled = xUsed[i];
+    el.setAttribute('aria-label', 'Suono a sorpresa ' + (i + 1) + (xUsed[i] ? ', già usato' : ''));
   });
-  const imp = $('imp'), impReady = story && !impUsed && recs.length > 0;
-  imp.disabled = !impReady; imp.classList.toggle('ready', impReady);
-  imp.setAttribute('aria-label', !story ? 'Imprevisto, disponibile a storia iniziata' : impUsed ? 'Imprevisto già usato' : recs.length ? 'Imprevisto' : 'Imprevisto, nessuna frase registrata');
-
-  const open = menuFor !== null;
-  menuEl.hidden = !open; scrim.hidden = !open; middle.classList.toggle('open', open);
-  if (open) {
-    menuEl.setAttribute('aria-label', 'Scegli il suono per Extra ' + (menuFor + 1));
-    [...menuEl.children].forEach((b, j) => {
-      const sel = extras[menuFor] === j;
-      b.classList.toggle('sel', sel); b.setAttribute('aria-pressed', sel ? 'true' : 'false');
-      b.classList.toggle('used', !sel && extras.includes(j));
-    });
+  if (jollyBtn) {
+    const left = JOLLY_MAX - jollyCount, avail = recs.some(r => !jollyUsed.has(r.id));
+    jollyBtn.disabled = left <= 0 || !avail;
+    jollyBtn.querySelectorAll('.pips i').forEach((p, k) => p.classList.toggle('spent', k >= left));
+    jollyBtn.setAttribute('aria-label', 'Jolly, ' + (recs.length ? left + ' rimasti' : 'nessuna registrazione'));
   }
-  $('cavLab').textContent = story ? 'Ai cavalli!' : 'Inizia la storia';
-  $('cav').classList.toggle('story', story);
-  $('transport').hidden = !story;
-  $('toImp').hidden = story;
+  $('aiuto').disabled = aiutoUsed;
   $('pp').innerHTML = paused ? svg('M7 5l12 7-12 7z', 18, 2) + 'Riprendi' : svg('M8 5v14 M16 5v14', 18, 2.4) + 'Pausa';
   document.body.classList.toggle('paused', paused);
 }
 
-/* ================= schermata imprevisti ================= */
-const recBtn = $('rec'), listEl = $('list'), msgEl = $('impMsg');
+/* ================= registrazioni ================= */
+const recBtn = $('rec'), listEl = $('list'), msgEl = $('recMsg');
 const recDecoded = new Map();
 function loadRec(r) {
   if (!recDecoded.has(r.id)) {
@@ -362,16 +404,16 @@ async function startRec() {
     recording = null;
     const dur = (performance.now() - t0) / 1000;
     const blob = new Blob(chunks, { type: mr.mimeType || type || 'audio/webm' });
-    if (blob.size < 500 || dur < .4) { drawImp(); return; }
-    const n = recs.reduce((m, r) => { const k = parseInt((r.title.match(/^Imprevisto (\d+)$/) || [])[1], 10); return k > m ? k : m; }, 0) + 1;
-    const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'Imprevisto ' + n, created: Date.now(), dur, blob };
+    if (blob.size < 500 || dur < .4) { drawRec(); return; }
+    const n = recs.reduce((m, r) => { const k = parseInt((r.title.match(/^Registrazione (\d+)$/) || [])[1], 10); return k > m ? k : m; }, 0) + 1;
+    const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'Registrazione ' + n, created: Date.now(), dur, blob };
     recs.push(r);
     try { await saveRec(r); } catch (e) { showMsg('Non sono riuscito a salvare la registrazione sul telefono. Controlla lo spazio libero.'); }
-    drawImp(); draw();
+    drawRec(); draw();
   };
   mr.start();
   recording = { mr, t0, timer: setInterval(tick, 200) };
-  drawImp();
+  drawRec();
 }
 function stopRec() { if (recording && recording.mr.state !== 'inactive') recording.mr.stop(); }
 function tick() {
@@ -382,7 +424,7 @@ function tick() {
 }
 recBtn.addEventListener('click', () => { recording ? stopRec() : startRec(); });
 
-let preview = null; // { id, voice }
+let preview = null;
 function stopPreview() { if (preview) { try { preview.voice.src.stop(); } catch (e) { } preview = null; markPreview(); } }
 function markPreview() {
   listEl.querySelectorAll('.play').forEach(b => {
@@ -402,15 +444,15 @@ async function togglePreview(r) {
   } catch (e) { showMsg('Questa registrazione non si riesce a riprodurre su questo telefono.'); }
 }
 
-function drawImp() {
+function drawRec() {
   $('count').textContent = recs.length + '/' + MAX_REC;
   const full = recs.length >= MAX_REC;
   recBtn.disabled = full && !recording;
   recBtn.classList.toggle('on', !!recording);
-  recBtn.setAttribute('aria-label', recording ? 'Ferma la registrazione' : 'Registra un imprevisto');
+  recBtn.setAttribute('aria-label', recording ? 'Ferma la registrazione' : 'Registra');
   if (!recording) {
-    $('recState').textContent = full ? 'Hai 50 imprevisti' : 'Registra un imprevisto';
-    $('recHint').textContent = full ? 'Cancellane uno per registrarne un altro.' : 'Tocca il pulsante, di\' la frase, tocca di nuovo per fermare. Massimo 30 secondi.';
+    $('recState').textContent = full ? 'Hai 50 registrazioni' : 'Registra';
+    $('recHint').textContent = full ? 'Cancellane una per registrarne un\'altra.' : 'Tocca il pulsante, di\' la frase, tocca di nuovo per fermare. Massimo 30 secondi.';
   } else {
     $('recHint').textContent = 'Tocca di nuovo per fermare e salvare.';
     tick();
@@ -422,7 +464,7 @@ function drawImp() {
     const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'play'; pb.dataset.id = r.id; pb.dataset.title = r.title;
     pb.addEventListener('click', () => togglePreview(r));
     const inp = document.createElement('input'); inp.className = 'title'; inp.type = 'text'; inp.value = r.title; inp.id = 'title-' + r.id;
-    inp.setAttribute('aria-label', 'Titolo dell\'imprevisto'); inp.maxLength = 60;
+    inp.setAttribute('aria-label', 'Titolo della registrazione'); inp.maxLength = 60;
     inp.addEventListener('change', () => { const v = inp.value.trim(); if (v) { r.title = v; pb.dataset.title = v; saveRec(r).catch(() => { }); } else inp.value = r.title; });
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     const du = document.createElement('span'); du.className = 'dur'; du.textContent = fmt(r.dur || 0);
@@ -440,7 +482,7 @@ function drawImp() {
       if (preview && preview.id === r.id) stopPreview();
       recs = recs.filter(x => x.id !== r.id); recDecoded.delete(r.id);
       try { await deleteRec(r.id); } catch (e) { }
-      drawImp(); draw();
+      drawRec(); draw();
     });
     li.append(pb, inp, du, del);
     listEl.appendChild(li);
@@ -450,17 +492,20 @@ function drawImp() {
 
 /* ================= navigazione ================= */
 function route() {
-  const imp = location.hash === '#imprevisti' && !story;
-  $('screen-main').hidden = imp; $('screen-imp').hidden = !imp;
-  if (!imp) { stopRec(); stopPreview(); showMsg(''); }
-  else { menuFor = null; draw(); drawImp(); }
+  const rec = location.hash === '#registrazioni' && !story;
+  $('screen-start').hidden = story || rec;
+  $('screen-main').hidden = !story;
+  $('screen-rec').hidden = !rec;
+  if (rec) { stopAmbient(.5); drawRec(); }
+  else { stopRec(); stopPreview(); showMsg(''); if (!story && ctx && ctx.state === 'running') startAmbient(); }
+  draw();
   window.scrollTo(0, 0);
 }
-$('toImp').addEventListener('click', () => { location.hash = 'imprevisti'; });
-$('back').addEventListener('click', () => { if (history.length > 1 && location.hash === '#imprevisti') history.back(); else location.hash = ''; });
+$('toRec').addEventListener('click', () => { location.hash = 'registrazioni'; });
+$('back').addEventListener('click', () => { if (history.length > 1 && location.hash === '#registrazioni') history.back(); else location.hash = ''; });
 window.addEventListener('hashchange', route);
 
-draw(); drawImp(); route();
+draw(); drawRec(); route();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));

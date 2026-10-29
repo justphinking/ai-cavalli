@@ -1,3 +1,5 @@
-Extra: fino a 20 clip, numerate 01.mp3 ... 20.mp3. Il numero corrisponde alla posizione nella tendina (01 = prima icona in alto a sinistra). Il Jolly pesca da qui tra quelle non assegnate.
+Suoni a sorpresa dei 4 tasti "?": metti qui tutte le clip che vuoi (nomi liberi).
+Ogni tasto, quando lo tocchi, suona una clip a caso tra quelle non ancora uscite nella storia, sopra la musica (che si abbassa un po'), poi diventa grigio fino a Riavvia.
+Servono almeno 4 clip perché tutti e 4 i tasti suonino.
 
-Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa un suono segnaposto.
+Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa dei suoni segnaposto.

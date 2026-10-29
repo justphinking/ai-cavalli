@@ -79,15 +79,6 @@ export function createSynth(ctx) {
       if (i % 3 === 1) return render(1.1, (t, dt) => { const f = 1500 * Math.pow(.3, Math.min(t, .9) / .9) * (1 + .02 * Math.sin(TAU * 7 * t)); ph += f * dt; return Math.sin(TAU * ph) * Math.min(1, t / .03) * Math.min(1, (1.1 - t) / .15); });
       return render(1.3, (t, dt) => { const f = 180 * (1 + .5 * t) * (1 + .6 * Math.sin(TAU * 9 * t) * Math.exp(-t * 2.5)); ph += f * dt; return (Math.sin(TAU * ph) + .3 * Math.sin(TAU * 2 * ph)) * Math.exp(-t * 2) * Math.min(1, t / .005); });
     },
-    jingle() {
-      return render(2.1, t => {
-        let s = 0;
-        [[0, 72], [.13, 76], [.26, 79], [.39, 84]].forEach(([st, m]) => { const lt = t - st; if (lt >= 0 && lt < .13) s += (wave('sq', mtof(m) * lt) * .5 + wave('saw', mtof(m) * lt) * .4) * Math.min(1, lt / .004) * Math.min(1, (.13 - lt) / .01); });
-        const lt = t - .55;
-        if (lt >= 0) { const e = Math.min(1, lt / .01) * Math.exp(-lt * 1.4); [72, 76, 79, 84].forEach(m => { s += .28 * (wave('sq', mtof(m) * lt) * .5 + wave('saw', mtof(m) * lt) * .4) * e; }); }
-        return s;
-      });
-    },
     cavalli(v) {
       v %= 3;
       const beat = 60 / [150, 168, 138][v], key = [60, 62, 58][v], D = 5.5, mot = [[0, 4, 7, 12], [7, 7, 12, 16], [0, 7, 4, 12]][v];
@@ -114,21 +105,20 @@ export function createSynth(ctx) {
       const f = 700 + p * 220, cnt = 3 + p;
       return render(.12 * cnt + .1, t => { const k = Math.floor(t / .12), lt = t - k * .12; if (k >= cnt || lt > .08) return 0; return wave('sq', f * (1 + .12 * k) * t) * Math.min(1, lt / .003) * Math.min(1, (.08 - lt) / .005); });
     },
-    door() {
-      let cph = 0, last = -1;
-      return render(2.5, (t, dt) => {
-        let s = 0;
-        if (t < 1.4) {
-          cph += (35 + 25 * Math.sin(TAU * 1.3 * t) + 15 * t) * dt;
-          if (cph >= 1) { cph -= 1; last = t; }
-          if (last >= 0) { const lt = t - last; s += (Math.sin(TAU * 820 * lt) + .6 * Math.sin(TAU * 1370 * lt) + .3 * Math.sin(TAU * 2300 * lt)) * Math.exp(-lt * 90) * Math.sin(Math.PI * t / 1.4); }
-        }
-        for (const [st, a] of [[1.45, 1], [1.75, .6], [1.98, .35], [2.15, .2]]) {
+    ambiente() {
+      // brusio di sala, qualche nota di pianoforte e un bicchiere: 8 secondi in loop
+      const D = 8, notes = [[.2, 64], [.55, 67], [.9, 72], [1.6, 69], [2.4, 65], [2.75, 69], [3.1, 72], [3.9, 71], [4.6, 67], [4.95, 71], [5.3, 74], [6.1, 72], [6.5, 60]];
+      let lp = 0, lp2 = 0;
+      return render(D, t => {
+        lp += .02 * (rnd() - lp); lp2 += .08 * (lp - lp2);
+        let s = 3 * lp2 * (.7 + .3 * Math.sin(TAU * 2 * t / D));
+        for (const [st, m] of notes) {
           const lt = t - st;
-          if (lt >= 0 && lt < .25) s += a * (Math.sin(TAU * 140 * lt) * Math.exp(-lt * 30) + .5 * Math.sin(TAU * 420 * lt) * Math.exp(-lt * 45));
+          if (lt >= 0 && lt < 1.2) { const f = mtof(m); s += .18 * (wave('tri', f * lt) + .5 * wave('tri', f * 1.004 * lt)) * Math.exp(-lt * 3) * Math.min(1, lt / .004) * Math.min(1, (1.2 - lt) / .05); }
         }
+        for (const st of [1.3, 5.7]) { const lt = t - st; if (lt >= 0 && lt < .4) s += .12 * Math.sin(TAU * 3200 * lt) * Math.exp(-lt * 18); }
         return s;
-      });
+      }, .6);
     }
   };
 }

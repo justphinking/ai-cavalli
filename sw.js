@@ -1,6 +1,6 @@
 // Tiene l'app disponibile anche senza rete.
 const CACHE = 'aicavalli-__BUILD__';
-const SHELL = ['./', 'index.html', 'styles.css', 'js/app.js', 'js/synth.js', 'js/store.js', 'audio-manifest.json', 'manifest.webmanifest', 'icons/icon-192.png'];
+const SHELL = ['./', 'index.html', 'styles.css', 'js/app.js', 'js/synth.js', 'js/store.js', 'audio-manifest.json', 'aiutini.txt', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => { }));
@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
       return r;
     }).catch(() => hit || (isPage ? c.match('index.html') : undefined));
     // pagina e file dell'app: prima la rete (aggiornamenti subito), poi la copia salvata
-    if (isPage || /\.(html|css|js|json|webmanifest)$/.test(new URL(req.url).pathname)) return net.then(r => r || hit);
+    if (isPage || /\.(html|css|js|json|txt|webmanifest)$/.test(new URL(req.url).pathname)) return net.then(r => r || hit);
     // audio, icone e font: prima la copia salvata
     return hit || net;
   }));
