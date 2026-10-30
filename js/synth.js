@@ -14,11 +14,13 @@ function wave(type, ph) {
   }
 }
 
-const SC = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10], hmin: [0, 2, 3, 5, 7, 8, 11], pen: [0, 2, 4, 7, 9] };
+const SC = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10], hmin: [0, 2, 3, 5, 7, 8, 11], pen: [0, 2, 4, 7, 9], whole: [0, 2, 4, 6, 8, 10] };
 const semi = (sc, dg) => { const L = sc.length, o = Math.floor(dg / L); return sc[((dg % L) + L) % L] + 12 * o; };
 const _ = null;
 const MCFG = {
-  avventura: { bpm: 132, sc: 'maj', root: 57, w: 'saw', dec: 6, bdec: 1.5, pat: [0, 2, 4, 7, 4, 2, 0, 4, 5, 4, 2, 4, 7, 9, 7, 4], bass: [0, 0, 3, 4] },
+  neutro: { bpm: 112, sc: 'maj', root: 57, w: 'tri', dec: 5, bdec: 1.2, pat: [0, 2, 4, 2, 0, 4, 2, 4, 3, 2, 1, 2, 4, 5, 4, 2], bass: [0, 0, 3, 4] },
+  mistero: { bpm: 66, sc: 'whole', root: 52, w: 'sine', dec: 2.2, bdec: .5, pat: [0, _, 3, _, 5, _, 2, _, 4, _, 1, _, 6, _, 3, _], bass: [0, 0, 1, 0], trem: 1 },
+  conflitto: { bpm: 150, sc: 'hmin', root: 52, w: 'saw', dec: 9, bdec: 7, pat: [0, 0, 7, 0, 6, 0, 5, 4, 0, 0, 7, 0, 8, 7, 6, 4], bass: [0, 0, 5, 4] },
   suspense: { bpm: 84, sc: 'hmin', root: 50, w: 'tri', dec: 5, bdec: .4, pat: [0, _, 1, _, 0, _, 7, _, 0, _, 1, _, 5, _, 4, _], bass: [0, 0, 0, -1], trem: 1 },
   love: { bpm: 72, sc: 'maj', root: 60, w: 'sine', dec: 2.5, bdec: .8, pat: [0, 4, 6, 9, 7, 4, 2, 4, 3, 5, 7, 9, 8, 5, 4, 2], bass: [0, 3, 5, 4] },
   comedy: { bpm: 152, sc: 'maj', root: 62, w: 'sq', dec: 12, bdec: 6, pat: [0, _, 4, _, 2, 4, 7, _, 5, _, 3, _, 1, 3, 4, _], bass: [0, 4, 0, 4] },

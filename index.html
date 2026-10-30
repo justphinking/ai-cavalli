@@ -19,45 +19,39 @@
 </head>
 <body>
 
-<!-- ============ SCHERMATA INIZIALE (SALOON) ============ -->
-<main class="start" id="screen-start">
-  <div class="floor" aria-hidden="true"></div>
-  <div class="start-in">
-    <header>
-      <h1>Ai cavalli!</h1>
-      <button type="button" class="round right" id="toRec" aria-label="Registrazioni per il Jolly">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </header>
+<!-- ============ SCHERMATA 1: TITOLO ============ -->
+<main class="title-screen" id="screen-title">
+  <button type="button" class="title-tap" id="titleTap" aria-label="Tocca per iniziare">
+    <span class="title-big">Ai cavalli</span>
+    <span class="title-small">Tocca qualsiasi punto dello schermo per iniziare</span>
+  </button>
+</main>
 
-    <div class="stage">
-      <svg class="doors" viewBox="0 0 320 220" aria-hidden="true">
-        <g fill="#4A2E1B" stroke="#7A5232" stroke-width="3" stroke-linejoin="round">
-          <path d="M8 52 Q60 18 124 40 V206 H8 Z"/>
-          <path d="M312 52 Q260 18 196 40 V206 H312 Z"/>
-        </g>
-        <g stroke="#2A190E" stroke-width="3" stroke-linecap="round">
-          <path d="M24 70h86 M24 92h86 M24 114h86 M24 136h86 M24 158h86 M24 180h86"/>
-          <path d="M210 70h86 M210 92h86 M210 114h86 M210 136h86 M210 158h86 M210 180h86"/>
-        </g>
-        <g fill="#C9A15A"><circle cx="16" cy="78" r="4"/><circle cx="16" cy="182" r="4"/><circle cx="304" cy="78" r="4"/><circle cx="304" cy="182" r="4"/></g>
-      </svg>
-      <button type="button" class="cav big" id="cavStart" aria-label="Ai cavalli! Inizia la storia">
-        <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><path d="M9 6v11a8 8 0 0 0 16 0V6" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="9" cy="11" r="1.1" fill="#F4EFE6"/><circle cx="25" cy="11" r="1.1" fill="#F4EFE6"/><circle cx="10" cy="18" r="1.1" fill="#F4EFE6"/><circle cx="24" cy="18" r="1.1" fill="#F4EFE6"/></svg>
-        <span class="lab">Ai cavalli!</span>
+<!-- ============ SCHERMATA 2: SALOON ============ -->
+<main class="lobby" id="screen-lobby" hidden>
+  <div class="lobby-in">
+    <div class="lobby-top">
+      <button type="button" class="rec-link" id="toRec">
+        <span>registra un imprevisto</span>
+        <span class="mic" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
       </button>
     </div>
 
-    <p class="hint" id="hint">Tocca lo schermo per entrare nel saloon</p>
-
-    <div class="bottom">
-      <p class="aiuto-box" id="aiutoBox" role="status" aria-live="polite" hidden></p>
+    <div class="stage">
+      <button type="button" class="cav big" id="cavStart">
+        <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><path d="M9 6v11a8 8 0 0 0 16 0V6" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="9" cy="11" r="1.1" fill="#F4EFE6"/><circle cx="25" cy="11" r="1.1" fill="#F4EFE6"/><circle cx="10" cy="18" r="1.1" fill="#F4EFE6"/><circle cx="24" cy="18" r="1.1" fill="#F4EFE6"/></svg>
+        <span class="lab">Inizia la storia</span>
+      </button>
+      <p class="oppure">oppure chiedi un aiutino</p>
       <button type="button" class="aiuto" id="aiuto">Aiutino</button>
+      <p class="card" id="aiutoBox" role="status" aria-live="polite" hidden></p>
     </div>
   </div>
 </main>
 
-<!-- ============ STORIA ============ -->
+<!-- ============ SCHERMATA 3: STORIA ============ -->
 <main class="app" id="screen-main" hidden>
   <header>
     <h1>Ai cavalli!</h1>
@@ -68,7 +62,7 @@
 
   <section aria-labelledby="h-m">
     <h2 id="h-m">Musiche</h2>
-    <div class="grid3" id="music"></div>
+    <div class="grid4" id="music"></div>
   </section>
 
   <div class="mid">
@@ -103,7 +97,7 @@
     <button type="button" class="round left" id="back" aria-label="Torna indietro">
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <h1 class="small">Registrazioni</h1>
+    <h1 class="small">Imprevisti</h1>
     <span class="count" id="count">0/50</span>
   </header>
 
@@ -112,7 +106,7 @@
       <span class="recdot" aria-hidden="true"></span>
     </button>
     <div class="rectext">
-      <strong id="recState">Registra</strong>
+      <strong id="recState">Registra un imprevisto</strong>
       <span id="recHint">Tocca il pulsante, di' la frase, tocca di nuovo per fermare. Massimo 30 secondi.</span>
     </div>
   </div>
@@ -122,7 +116,10 @@
   <p class="empty" id="empty">Nessuna registrazione. Durante la storia il tasto Jolly ne fa partire una a caso, fino a 3 volte.</p>
 </main>
 
-<div class="curtain" id="curtain" aria-hidden="true"></div>
+<!-- suggerimento dei tasti "?" -->
+<button type="button" class="card hint-card" id="hintCard" hidden></button>
+
+<div class="flare" id="flare" aria-hidden="true"></div>
 
 <script type="module" src="js/app.js"></script>
 </body>

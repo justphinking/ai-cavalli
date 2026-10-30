@@ -1,5 +1,5 @@
-Suoni a sorpresa dei 4 tasti "?": metti qui tutte le clip che vuoi (nomi liberi).
-Ogni tasto, quando lo tocchi, suona una clip a caso tra quelle non ancora uscite nella storia, sopra la musica (che si abbassa un po'), poi diventa grigio fino a Riavvia.
-Servono almeno 4 clip perché tutti e 4 i tasti suonino.
+Suoni a sorpresa dei tasti "?": metti qui tutte le clip che vuoi (nomi liberi).
+In ogni storia 2 dei 4 tasti "?" (scelti a caso) suonano una clip presa da qui, mai la stessa due volte; gli altri 2 mostrano un suggerimento (file suggerimenti.txt).
+La clip suona sopra la musica, che si abbassa un po'.
 
 Formati: mp3, m4a, aac, wav, ogg. Se la cartella è vuota l'app usa dei suoni segnaposto.

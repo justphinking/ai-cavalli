@@ -1,0 +1,7 @@
+Sfondi delle schermate iniziali.
+- sfondo-1.jpg: schermata 1 (titolo "Ai cavalli").
+- sfondo-2.jpg: schermata 2 (saloon).
+
+Formato verticale 1170 x 2532 px (minimo 1080 x 1920), JPG sotto i 500 KB.
+Tieni le cose importanti verso il centro e lascia una zona tranquilla al centro per scritte e tasti.
+I nomi devono essere esattamente questi. Finché mancano, l'app usa uno sfondo di legno disegnato.

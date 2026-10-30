@@ -15,50 +15,59 @@ Pannello sonoro per raccontare storie. È una web app: si apre da un link e si p
 
 Da qui in poi, ogni modifica caricata su GitHub viene pubblicata da Vercel in automatico.
 
-## Inserire i suoni
+## Inserire i contenuti
 
-Tutti i suoni stanno nella cartella `audio/`. Ogni sottocartella contiene un file `LEGGIMI.txt` che spiega cosa ci va.
+Ogni cartella contiene un file `LEGGIMI.txt` che spiega cosa ci va.
 
 ```
+img/
+  sfondo-1.jpg                → sfondo della schermata 1 (titolo)
+  sfondo-2.jpg                → sfondo della schermata 2 (saloon)
 audio/
-  ambiente/                                                → 1 clip in loop (schermata iniziale, saloon)
-  cavalli/                                                 → 2 clip: 1 = tocco, 2 = tenuto premuto / ingresso nella storia
-  musiche/avventura, suspense, love, comedy, calma, triste   → 3 clip ciascuna, in loop
-  accenti/taglio, drama, crescendo                         → 1 clip ciascuna
-  accenti/battuta                                          → 3 clip
-  extra/                                                   → tutte le clip che vuoi, per i 4 tasti "?"
+  ambiente/                   → 1 clip in loop (schermata 2, saloon)
+  inizio/                     → clip di "Inizia la storia"
+  cavalli/                    → 2 clip: 1 = tocco, 2 = tenuto premuto
+  musiche/neutro, mistero, suspense, conflitto,
+          love, comedy, calma, triste            → 3 clip ciascuna, in loop
+  accenti/tan, drama, crescendo                  → 1 clip ciascuna
+  accenti/battuta                                → 3 clip
+  extra/                      → tutte le clip che vuoi, per i tasti "?"
+aiutini.txt                   → frasi dell'Aiutino (schermata 2)
+suggerimenti.txt              → frasi dei tasti "?" (storia)
 ```
 
-- Formati: mp3, m4a, aac, wav, ogg. Nomi liberi (tranne in `cavalli`, dove i file si chiamano 1 e 2).
-- Se una cartella è vuota, l'app usa un suono segnaposto.
-- Per caricare o sostituire un file dal sito di GitHub: entra nella cartella → *Add file → Upload files* → trascina → *Commit changes*. Dopo circa un minuto l'app aggiornata è online.
+- Audio: mp3, m4a, aac, wav, ogg. Nomi liberi, tranne in `cavalli`, dove i file si chiamano 1 e 2.
 - Per i loop (ambiente e musiche) usa il WAV 44.100 Hz 16 bit, tagliato sui passaggi per lo zero.
+- Sfondi: formato verticale 1170 × 2532 px (minimo 1080 × 1920), JPG sotto i 500 KB. I nomi devono essere esattamente `sfondo-1.jpg` e `sfondo-2.jpg`.
+- Se un contenuto manca, l'app usa un segnaposto (suono generato o sfondo di legno disegnato).
+- Testi: una frase per riga. Si modificano da GitHub: apri il file → icona della matita → scrivi → *Commit changes*.
+- Per caricare o sostituire un file dal sito di GitHub: entra nella cartella → *Add file → Upload files* → trascina → *Commit changes*. Dopo circa un minuto l'app aggiornata è online.
 
-## Testi dell'Aiutino
+## Imprevisti (registrazioni per il Jolly)
 
-Stanno nel file `aiutini.txt`, una frase per riga. Si modifica da GitHub: apri il file → icona della matita → scrivi → *Commit changes*.
-
-## Registrazioni per il Jolly
-
-Si registrano **direttamente sul telefono**, dal pulsante con il microfono in alto a destra nella schermata iniziale. Restano solo su quel telefono, fino a 50.
+Si registrano **direttamente sul telefono**, dal pulsante "registra un imprevisto" in alto a destra nella schermata del saloon. Restano solo su quel telefono, fino a 50.
 
 Attenzione: se si cancellano i dati del sito dal browser, le registrazioni si perdono.
 
 ## Come funziona
 
-**Schermata iniziale (saloon)**
-- Al primo tocco sullo schermo parte l'ambiente in loop (i browser non lasciano partire l'audio da soli).
-- **Aiutino**: mostra una frase a caso dall'archivio. Si può usare una volta; la frase resta finché non si entra nella storia.
-- **Ai cavalli!**: comunque lo si prema fa partire la clip 2 di `cavalli`, sfuma l'ambiente ed entra nella storia.
+**Schermata 1 (titolo)**: tocca un punto qualsiasi. Parte la musica del saloon e si passa alla schermata 2.
+
+**Schermata 2 (saloon)**
+- **Inizia la storia**: parte la clip di `inizio` e una dissolvenza luminosa porta alla storia.
+- **Aiutino**: mostra una frase a caso da `aiutini.txt`. Una volta per storia; la frase resta finché non si entra nella storia.
 
 **Storia**
-- **Musiche**: una alla volta, in loop. Toccando la musica che sta suonando la si spegne.
-- **Tasti "?"** (4, attorno al tasto centrale): ognuno suona una clip a caso da `extra`, mai la stessa due volte nella storia, sopra la musica (che si abbassa un po'). Dopo l'uso diventa grigio.
+- **Musiche** (8): una alla volta, in loop. Toccando la musica che sta suonando la si spegne.
+- **Tasti "?"** (4): in ogni storia 2, scelti a caso, suonano una clip da `extra` sopra la musica (che si abbassa un po'). Gli altri 2 mostrano un suggerimento da `suggerimenti.txt`, che si chiude toccandolo o premendo un altro tasto. Dopo l'uso diventano grigi.
 - **Ai cavalli!**: tocco normale → clip 1; tenuto premuto 1,5 secondi → clip 2. Entrano in dissolvenza e sostituiscono l'audio presente.
-- **Accenti**: Silenzio sfuma tutto in 3 secondi. Taglio ferma tutto di colpo con un accento. Drama e Battuta suonano sopra la musica. Crescendo suona sopra la musica e alla fine ferma tutto.
-- **Jolly**: suona una delle registrazioni, sopra la musica (che si abbassa un po'), senza ripetizioni. Si può usare 3 volte per storia (i pallini in alto a destra), poi diventa grigio.
+- **Volume**: alterna il volume della musica tra alto (pieno) e basso (50%), con una dissolvenza di 1,5 secondi. All'inizio di ogni storia è su alto.
+- **Tan!**: ferma tutto di colpo con un accento.
+- **Drama** e **Battuta**: suonano sopra la musica.
+- **Crescendo**: suona sopra la musica e alla fine ferma tutto.
+- **Jolly**: suona uno degli imprevisti registrati, sopra la musica (che si abbassa un po'), senza ripetizioni. 3 volte per storia (i pallini in alto a destra).
 - **Pausa / Riprendi**: sospende tutto l'audio.
-- **Riavvia**: ferma tutto, torna alla schermata iniziale e riattiva tutti i tasti.
+- **Riavvia**: ferma tutto e torna alla schermata del saloon, riattivando tutti i tasti.
 
 ## Provarla sul computer
 

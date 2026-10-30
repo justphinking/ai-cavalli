@@ -1,6 +1,6 @@
 Ai cavalli!: 2 clip, chiamale 1 e 2 (es. 1.mp3, 2.mp3).
-- 2: parte quando premi Ai cavalli! nella schermata iniziale, entrando nella storia. Durante la storia parte tenendo premuto il tasto per 1,5 secondi.
 - 1: durante la storia parte con un tocco normale.
+- 2: durante la storia parte tenendo premuto il tasto per 1,5 secondi.
 Entrano in dissolvenza e sostituiscono l'audio presente.
 
 Formati: mp3, m4a, aac, wav, ogg. Se manca un file l'app usa un suono segnaposto.

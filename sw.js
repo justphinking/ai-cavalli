@@ -1,6 +1,6 @@
 // Tiene l'app disponibile anche senza rete.
 const CACHE = 'aicavalli-__BUILD__';
-const SHELL = ['./', 'index.html', 'styles.css', 'js/app.js', 'js/synth.js', 'js/store.js', 'audio-manifest.json', 'aiutini.txt', 'manifest.webmanifest', 'icons/icon-192.png'];
+const SHELL = ['./', 'index.html', 'styles.css', 'js/app.js', 'js/synth.js', 'js/store.js', 'audio-manifest.json', 'aiutini.txt', 'suggerimenti.txt', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => { }));

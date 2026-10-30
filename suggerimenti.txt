@@ -1,0 +1,5 @@
+# Suggerimenti dei tasti "?" durante la storia: una frase (o due) per riga.
+# Le righe che iniziano con # e quelle vuote vengono ignorate.
+Il cattivo della storia ha un'ottima ragione per fare quello che fa. Quale?
+Comincia a piovere fortissimo e tutti devono ripararsi nello stesso posto.
+Un oggetto che sembrava inutile si rivela fondamentale.

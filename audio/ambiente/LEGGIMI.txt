@@ -1,4 +1,4 @@
-Ambiente della schermata iniziale (saloon): 1 clip in loop.
-Parte al primo tocco sullo schermo e sfuma quando si preme Ai cavalli!.
+Ambiente della schermata del saloon: 1 clip in loop.
+Parte quando si tocca la schermata iniziale e sfuma quando si preme "Inizia la storia".
 
 Formato consigliato: WAV 44.100 Hz 16 bit (è un loop). Se la cartella è vuota l'app usa un suono segnaposto.
