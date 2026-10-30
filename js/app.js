@@ -373,6 +373,10 @@ function flareStop(instant) {
 }
 
 /* icona del tasto Ai cavalli!: se c'è img/icona-cavalli.png prende il posto del ferro di cavallo */
+document.querySelectorAll('.title-ic').forEach(img => {
+  const show = () => { img.hidden = false; };
+  if (img.complete && img.naturalWidth) show(); else img.addEventListener('load', show);
+});
 document.querySelectorAll('.cav-ic').forEach(img => {
   const show = () => { img.hidden = false; const s = img.parentNode.querySelector('.cav-svg'); if (s) s.style.display = 'none'; };
   if (img.complete && img.naturalWidth) show(); else img.addEventListener('load', show);

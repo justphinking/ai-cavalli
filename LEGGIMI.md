@@ -23,7 +23,8 @@ Ogni cartella contiene un file `LEGGIMI.txt` che spiega cosa ci va.
 img/
   sfondo-1.jpg                → sfondo della schermata 1 (titolo)
   sfondo-2.jpg                → sfondo della schermata 2 (saloon)
-  icona-cavalli.png           → icona del tasto Ai cavalli! (facoltativa)
+  icona-cavalli.png           → icona dei tasti Ai cavalli! / Inizia la storia, 512 × 256 px (facoltativa)
+  icona-titolo.png            → icona grande sopra il titolo della schermata 1, 1024 × 512 px (facoltativa)
 audio/
   ambiente/                   → 1 clip in loop (schermata 2, saloon)
   inizio/                     → clip di "Inizia la storia"
