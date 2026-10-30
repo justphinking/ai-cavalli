@@ -569,6 +569,14 @@ function pickType() {
   for (const t of ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/aac']) if (MediaRecorder.isTypeSupported(t)) return t;
   return '';
 }
+function setSession(type) { try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) { } }
+function micHelp(e) {
+  const code = ' (codice: ' + (e && e.name || 'sconosciuto') + ')';
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (e && e.name === 'NotFoundError') return 'Non trovo nessun microfono su questo dispositivo.' + code;
+  if (ios) return 'Il microfono è bloccato. Su iPhone: Impostazioni → Safari → Microfono → Chiedi. Poi chiudi del tutto l\'app e riaprila. Se l\'hai aperta da WhatsApp, apri invece il link in Safari.' + code;
+  return 'Il microfono è bloccato. Su Android: Impostazioni → App → Chrome → Autorizzazioni → Microfono → Consenti. Poi riapri l\'app. Se l\'hai aperta da WhatsApp, apri invece il link in Chrome.' + code;
+}
 async function startRec() {
   showMsg('');
   if (recs.length >= MAX_REC) return;
@@ -578,16 +586,19 @@ async function startRec() {
   }
   stopPreview();
   let stream;
+  // su iPhone la modalità audio "solo riproduzione" esclude il microfono: per registrare si passa a "riproduco e registro"
+  setSession('play-and-record');
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-  catch (e) { showMsg('Il microfono è bloccato. Consenti l\'accesso al microfono per questo sito nelle impostazioni del browser, poi riprova.'); return; }
+  catch (e) { setSession('playback'); showMsg(micHelp(e)); return; }
   const type = pickType();
   let mr;
   try { mr = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream); }
-  catch (e) { stream.getTracks().forEach(t => t.stop()); showMsg('Non riesco ad avviare la registrazione su questo telefono.'); return; }
+  catch (e) { stream.getTracks().forEach(t => t.stop()); setSession('playback'); showMsg('Non riesco ad avviare la registrazione su questo telefono. (codice: ' + (e && e.name || 'sconosciuto') + ')'); return; }
   const chunks = [], t0 = performance.now();
   mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   mr.onstop = async () => {
     stream.getTracks().forEach(t => t.stop());
+    setSession('playback');
     clearInterval(recording && recording.timer);
     recording = null;
     const dur = (performance.now() - t0) / 1000;
