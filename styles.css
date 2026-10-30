@@ -64,8 +64,15 @@ h2{margin:0 0 10px;font-family:var(--f-mono);font-size:12px;font-weight:500;lett
 .lobby-top{display:flex;justify-content:flex-end;min-height:56px;align-items:flex-start;padding-top:6px}
 .rec-link{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 14px;border-radius:22px;border:1px solid #7A5232;background:rgba(22,20,15,.72);font-size:14px;font-weight:700}
 .rec-link .mic{width:36px;height:36px;border-radius:18px;background:var(--brick);display:flex;align-items:center;justify-content:center}
-.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-bottom:40px}
-.oppure{margin:14px 0 0;font-size:15px;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.85)}
+/* il tasto "Inizia la storia" sta esattamente al centro dello schermo; il resto si dispone sotto */
+.lobby{height:100%;overflow:hidden}
+.stage{position:absolute;inset:0;pointer-events:none}
+.stage > *{pointer-events:auto}
+.stage .cav.big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.stage .cav.big:active{transform:translate(-50%,-50%) scale(.96)}
+.below{position:absolute;left:0;right:0;top:calc(50% + 96px);display:flex;flex-direction:column;align-items:center;gap:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lobby-in{position:relative;z-index:1}
+.oppure{margin:0;font-size:15px;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.85)}
 .aiuto{height:44px;padding:0 22px;border-radius:22px;border:1px solid #7A5232;background:rgba(22,20,15,.78);color:var(--ink);font-size:15px;font-weight:700}
 .aiuto:disabled{opacity:.4;cursor:default}
 .card{margin:0;width:100%;max-width:360px;padding:16px 18px;border-radius:12px;background:var(--paper);color:var(--paper-ink);font-size:17px;line-height:1.45;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.45);border:0}

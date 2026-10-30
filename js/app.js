@@ -28,7 +28,7 @@ const ACC = [
 ];
 const Q = 'M8.8 9a3.3 3.3 0 1 1 4.6 3c-.9.4-1.4 1.2-1.4 2.1V15 M12 19h.01';
 const N_SYNTH_EXTRA = 20, JOLLY_MAX = 3, MAX_REC = 50, MAX_SEC = 30;
-const VOL_LOW = .5;            // opzione "volume basso": musica al 50%
+const VOL_LOW = .35;           // opzione "volume basso": musica al 35%
 const VOL_FADE = 1.5;          // dissolvenza del selettore volume, in secondi
 const DUCK = .35;              // durante "?" audio e Jolly la musica scende al 35%
 

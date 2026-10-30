@@ -61,7 +61,7 @@ Attenzione: se si cancellano i dati del sito dal browser, le registrazioni si pe
 - **Musiche** (8): una alla volta, in loop. Toccando la musica che sta suonando la si spegne.
 - **Tasti "?"** (4): in ogni storia 2, scelti a caso, suonano una clip da `extra` sopra la musica (che si abbassa un po'). Gli altri 2 mostrano un suggerimento da `suggerimenti.txt`, che si chiude toccandolo o premendo un altro tasto. Dopo l'uso diventano grigi.
 - **Ai cavalli!**: tocco normale → clip 1; tenuto premuto 1,5 secondi → clip 2. Entrano in dissolvenza e sostituiscono l'audio presente.
-- **Volume**: alterna il volume della musica tra alto (pieno) e basso (50%), con una dissolvenza di 1,5 secondi. All'inizio di ogni storia è su alto.
+- **Volume**: alterna il volume della musica tra alto (pieno) e basso (35%), con una dissolvenza di 1,5 secondi. All'inizio di ogni storia è su alto.
 - **Tan!**: ferma tutto di colpo con un accento.
 - **Drama** e **Battuta**: suonano sopra la musica.
 - **Crescendo**: suona sopra la musica e alla fine ferma tutto.
