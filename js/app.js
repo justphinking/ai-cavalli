@@ -101,7 +101,9 @@ function ac() {
   return ctx;
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !ctx || paused) return;
+  if (document.visibilityState === 'hidden') { if (typeof stopRec === 'function') { stopRec(); coolMic(); } return; }
+  if (typeof prepareMic === 'function') prepareMic();
+  if (!ctx || paused) return;
   ctx.resume().catch(() => { });
   checkAlive(800);
 });
@@ -577,32 +579,55 @@ function micHelp(e) {
   if (ios) return 'Il microfono è bloccato. Su iPhone: Impostazioni → Safari → Microfono → Chiedi. Poi chiudi del tutto l\'app e riaprila. Se l\'hai aperta da WhatsApp, apri invece il link in Safari.' + code;
   return 'Il microfono è bloccato. Su Android: Impostazioni → App → Chrome → Autorizzazioni → Microfono → Consenti. Poi riapri l\'app. Se l\'hai aperta da WhatsApp, apri invece il link in Chrome.' + code;
 }
-async function startRec() {
-  showMsg('');
-  if (recs.length >= MAX_REC) return;
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
-    showMsg('Questo browser non permette di registrare. Apri l\'app dal suo indirizzo https con Safari o Chrome aggiornati.');
-    return;
-  }
-  stopPreview();
-  let stream;
+/* microfono "pronto in anticipo": si accende entrando nella schermata delle chiamate
+   e resta acceso finché si è lì, così la registrazione parte all'istante */
+let micStream = null, micPending = null;
+const micLive = () => micStream && micStream.getTracks().some(t => t.readyState === 'live');
+function warmMic() {
+  if (micLive()) return Promise.resolve(micStream);
+  if (micPending) return micPending;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) return Promise.reject({ name: 'Unsupported' });
   // su iPhone la modalità audio "solo riproduzione" esclude il microfono: per registrare si passa a "riproduco e registro"
   setSession('play-and-record');
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-  catch (e) { setSession('playback'); showMsg(micHelp(e)); return; }
+  micPending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+    .then(st => { micStream = st; micPending = null; return st; }, e => { micPending = null; setSession('playback'); throw e; });
+  return micPending;
+}
+function coolMic() {
+  if (recording) return;
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  setSession('playback');
+}
+function micError(e) {
+  if (e && e.name === 'Unsupported') return 'Questo browser non permette di registrare. Apri l\'app dal suo indirizzo https con Safari o Chrome aggiornati.';
+  return micHelp(e);
+}
+const onRecScreen = () => location.hash === '#registrazioni' && phase === 'lobby';
+function prepareMic() { if (onRecScreen() && recs.length < MAX_REC) warmMic().then(() => { showMsg(''); drawRec(); }, e => { showMsg(micError(e)); drawRec(); }); }
+
+async function startRec() {
+  showMsg('');
+  if (recs.length >= MAX_REC || recording) return;
+  stopPreview();
+  let stream;
+  recording = { starting: true }; drawRec();
+  try { stream = await warmMic(); }
+  catch (e) { recording = null; showMsg(micError(e)); drawRec(); return; }
   const type = pickType();
   let mr;
   try { mr = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream); }
-  catch (e) { stream.getTracks().forEach(t => t.stop()); setSession('playback'); showMsg('Non riesco ad avviare la registrazione su questo telefono. (codice: ' + (e && e.name || 'sconosciuto') + ')'); return; }
-  const chunks = [], t0 = performance.now();
+  catch (e) { recording = null; showMsg('Non riesco ad avviare la registrazione su questo telefono. (codice: ' + (e && e.name || 'sconosciuto') + ')'); drawRec(); return; }
+  const chunks = [];
+  const rec = recording = { mr, starting: true, t0: 0, timer: null };
   mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  // "Parla ora" compare solo quando il registratore sta davvero registrando
+  mr.onstart = () => { rec.starting = false; rec.t0 = performance.now(); rec.timer = setInterval(tick, 200); drawRec(); };
   mr.onstop = async () => {
-    stream.getTracks().forEach(t => t.stop());
-    setSession('playback');
-    clearInterval(recording && recording.timer);
+    clearInterval(rec.timer);
     recording = null;
-    const dur = (performance.now() - t0) / 1000;
+    const dur = rec.t0 ? (performance.now() - rec.t0) / 1000 : 0;
     const blob = new Blob(chunks, { type: mr.mimeType || type || 'audio/webm' });
+    if (!onRecScreen()) coolMic();
     if (blob.size < 500 || dur < .4) { drawRec(); return; }
     const n = recs.reduce((m, r) => { const k = parseInt((r.title.match(/^(?:Registrazione|Imprevisto|Chiamata) (\d+)$/) || [])[1], 10); return k > m ? k : m; }, 0) + 1;
     const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'Chiamata ' + n, created: Date.now(), dur, blob };
@@ -611,20 +636,19 @@ async function startRec() {
     drawRec(); draw();
   };
   mr.start();
-  recording = { mr, t0, timer: setInterval(tick, 200) };
-  drawRec();
 }
-function stopRec() { if (recording && recording.mr.state !== 'inactive') recording.mr.stop(); }
+function stopRec() { if (recording && recording.mr && recording.mr.state !== 'inactive') recording.mr.stop(); }
 function tick() {
   if (!recording) return;
+  if (recording.starting) return;
   const s = (performance.now() - recording.t0) / 1000;
-  $('recState').textContent = 'In registrazione · ' + fmt(s);
+  $('recState').textContent = 'Parla ora · ' + fmt(s);
   if (s >= MAX_SEC) stopRec();
 }
 recBtn.addEventListener('click', () => { recording ? stopRec() : startRec(); });
 
 let preview = null;
-function stopPreview() { if (preview) { try { preview.voice.src.stop(); } catch (e) { } preview = null; markPreview(); } }
+function stopPreview() { if (preview) { try { preview.voice.src.stop(); } catch (e) { } preview = null; markPreview(); prepareMic(); } }
 function markPreview() {
   listEl.querySelectorAll('.play').forEach(b => {
     const on = preview && b.dataset.id === preview.id;
@@ -634,12 +658,13 @@ function markPreview() {
   });
 }
 async function togglePreview(r) {
+  if (recording) return;
   if (preview && preview.id === r.id) { stopPreview(); return; }
-  stopPreview(); ac();
+  stopPreview(); coolMic(); ac();
   try {
     const b = await loadRec(r);
     // l'ascolto di prova passa già dal filtro telefono, come uscirà dal tasto Chiamate
-    const v = play(b, { dest: phoneChain(), onEnd: () => { if (preview && preview.voice === v) { preview = null; markPreview(); } } });
+    const v = play(b, { dest: phoneChain(), onEnd: () => { if (preview && preview.voice === v) { preview = null; markPreview(); prepareMic(); } } });
     preview = { id: r.id, voice: v }; markPreview();
   } catch (e) { showMsg('Questa chiamata non si riesce a riprodurre su questo telefono.'); }
 }
@@ -648,11 +673,15 @@ function drawRec() {
   $('count').textContent = recs.length + '/' + MAX_REC;
   const full = recs.length >= MAX_REC;
   recBtn.disabled = full && !recording;
-  recBtn.classList.toggle('on', !!recording);
+  recBtn.classList.toggle('on', !!recording && !recording.starting);
+  recBtn.classList.toggle('wait', !!recording && !!recording.starting);
   recBtn.setAttribute('aria-label', recording ? 'Ferma la registrazione' : 'Registra una chiamata');
   if (!recording) {
     $('recState').textContent = full ? 'Hai 50 chiamate' : 'Registra una chiamata';
     $('recHint').textContent = full ? 'Cancellane una per registrarne un\'altra.' : 'Tocca il pulsante, di\' la frase, tocca di nuovo per fermare. Massimo 30 secondi.';
+  } else if (recording.starting) {
+    $('recState').textContent = 'Un attimo…';
+    $('recHint').textContent = 'Sto accendendo il microfono.';
   } else {
     $('recHint').textContent = 'Tocca di nuovo per fermare e salvare.';
     tick();
@@ -697,8 +726,8 @@ function route() {
   $('screen-lobby').hidden = phase !== 'lobby' || rec;
   $('screen-main').hidden = phase !== 'story';
   $('screen-rec').hidden = !rec;
-  if (rec) { stopAmbient(.5); drawRec(); }
-  else { stopRec(); stopPreview(); showMsg(''); if (phase === 'lobby' && ctx) startAmbient(); }
+  if (rec) { stopAmbient(.5); drawRec(); prepareMic(); }
+  else { stopRec(); stopPreview(); coolMic(); showMsg(''); if (phase === 'lobby' && ctx) startAmbient(); }
   draw();
   window.scrollTo(0, 0);
 }
