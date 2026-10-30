@@ -28,9 +28,10 @@ const ACC = [
 ];
 const Q = 'M8.8 9a3.3 3.3 0 1 1 4.6 3c-.9.4-1.4 1.2-1.4 2.1V15 M12 19h.01';
 const N_SYNTH_EXTRA = 20, JOLLY_MAX = 3, MAX_REC = 50, MAX_SEC = 30;
-const VOL_LOW = .35;           // opzione "volume basso": musica al 35%
+const VOL_LOW = .22;           // opzione "volume basso": musica al 22%
 const VOL_FADE = 1.5;          // dissolvenza del selettore volume, in secondi
 const DUCK = .35;              // durante "?" audio e Jolly la musica scende al 35%
+const AMB_GAIN = 1.5;          // volume dell'ambiente del saloon (schermata 2)
 
 const svg = (d, s, w) => '<svg width="' + (s || 24) + '" height="' + (s || 24) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const rndInt = n => Math.floor(Math.random() * n);
@@ -48,7 +49,7 @@ function resetSession() {
   xKinds = shuffle(['audio', 'audio', 'hint', 'hint']);   // 2 tasti audio, 2 suggerimenti, in ordine casuale
   xClipsUsed = new Set(); hintsUsed = new Set();
   jollyCount = 0; jollyUsed = new Set();
-  volLow = false; duck = 0;
+  volLow = true; duck = 0;      // la musica parte su "basso"
 }
 
 let recs = [], files = {};
@@ -62,23 +63,44 @@ fetch('suggerimenti.txt', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '')
 listRecs().then(r => { recs = r.sort((a, b) => a.created - b.created); draw(); drawRec(); }).catch(() => { });
 
 /* ================= motore audio ================= */
-let ctx = null, master = null, synth = null;
+let ctx = null, master = null, synth = null, needRebuild = false;
 const voices = new Set();
 
+/* Il telefono può "addormentare" l'audio quando l'app resta in background a lungo
+   (soprattutto su iPhone). Se dopo il ritorno l'audio non riparte, al tocco successivo
+   l'app ricrea da capo il motore audio invece di restare muta. */
+function buildCtx() {
+  if (ctx) { try { ctx.close(); } catch (e) { } }
+  voices.clear(); decoded.clear(); synthCache.clear(); recDecoded.clear();
+  musicVoice = null; musicId = null; ambVoice = null; mTok++; duck = 0;
+  const C = window.AudioContext || window.webkitAudioContext;
+  ctx = new C();
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -10; comp.ratio.value = 3; comp.connect(ctx.destination);
+  master = ctx.createGain(); master.gain.value = .9; master.connect(comp);
+  synth = createSynth(ctx);
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+  // sblocco per iPhone: un istante di silenzio suonato dentro il tocco
+  try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate); s.connect(ctx.destination); s.start(0); } catch (e) { }
+  needRebuild = false;
+  if (typeof draw === 'function') draw();
+}
+function checkAlive(delay) {
+  const c = ctx;
+  setTimeout(() => { if (c && c === ctx && ctx.state !== 'running' && !paused) needRebuild = true; }, delay);
+}
 function ac() {
-  if (!ctx) {
-    const C = window.AudioContext || window.webkitAudioContext;
-    ctx = new C();
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -10; comp.ratio.value = 3; comp.connect(ctx.destination);
-    master = ctx.createGain(); master.gain.value = .9; master.connect(comp);
-    synth = createSynth(ctx);
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
-  }
+  if (!ctx || needRebuild || ctx.state === 'closed' || ctx.state === 'interrupted') buildCtx();
   if (paused) { paused = false; draw(); }
-  if (ctx.state !== 'running') ctx.resume().catch(() => { });
+  if (ctx.state !== 'running') { ctx.resume().catch(() => { }); checkAlive(600); }
   return ctx;
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !ctx || paused) return;
+  ctx.resume().catch(() => { });
+  checkAlive(800);
+});
+window.addEventListener('pageshow', e => { if (e.persisted && ctx && !paused && ctx.state !== 'running') needRebuild = true; });
 function play(buffer, o) {
   o = o || {};
   const now = ctx.currentTime, src = ctx.createBufferSource(), g = ctx.createGain();
@@ -107,6 +129,21 @@ function fade(v, secs) {
   } catch (e) { }
 }
 const fadeAll = (secs, except) => voices.forEach(v => { if (v !== except) fade(v, secs); });
+// stacco netto ritardato: l'accento parte subito, il resto si ferma un attimo dopo,
+// così non si sente il vuoto dovuto alla latenza del telefono
+const STOP_DELAY = .2;
+function cutAllAfter(delay, except) {
+  const now = ctx.currentTime, at = now + delay;
+  voices.forEach(v => {
+    if (v === except) return;
+    try {
+      const g = v.g.gain, val = g.value;
+      g.cancelScheduledValues(now); g.setValueAtTime(val, now); g.setValueAtTime(val, at);
+      g.linearRampToValueAtTime(0, at + .04);
+      v.src.stop(at + .06);
+    } catch (e) { }
+  });
+}
 let mTok = 0;
 function clearMusic() { musicVoice = null; musicId = null; mTok++; }
 
@@ -124,15 +161,27 @@ function playOver(buffer) {
 }
 
 /* ---- file dalle cartelle audio, con ripiego sui segnaposto ---- */
-const decoded = new Map(), synthCache = new Map();
+const decoded = new Map(), synthCache = new Map(), pinned = new Set();
 function decode(ab) { return new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); }
-function loadUrl(url) {
+function loadUrl(url, pin) {
+  if (pin) pinned.add(url);
   if (decoded.has(url)) { const p = decoded.get(url); decoded.delete(url); decoded.set(url, p); return p; }
   const p = fetch(encodeURI(url)).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(decode);
   decoded.set(url, p);
   p.catch(() => decoded.delete(url));
-  while (decoded.size > 16) decoded.delete(decoded.keys().next().value);
+  // tiene in memoria al massimo 16 clip, ma non scarta mai gli accenti (devono partire all'istante)
+  while (decoded.size > 16) { const k = [...decoded.keys()].find(x => !pinned.has(x)); if (!k) break; decoded.delete(k); }
   return p;
+}
+// prepara in anticipo accenti e Ai cavalli!, così al tocco partono senza attese
+function preloadInstant() {
+  ['accenti/tan', 'accenti/drama', 'accenti/battuta', 'accenti/crescendo', 'cavalli'].forEach(f => (files[f] || []).forEach(u => loadUrl(u, true).catch(() => { })));
+  const pre = (k, make) => { if (!synthCache.has(k)) synthCache.set(k, make()); };
+  setTimeout(() => {
+    if (!(files['accenti/tan'] || []).length) pre('tan0', () => synth.taglio());
+    if (!(files['accenti/drama'] || []).length) pre('drama0', () => synth.drama());
+    if (!(files['accenti/battuta'] || []).length) [0, 1, 2].forEach(i => pre('battuta' + i, () => synth.battuta(i)));
+  }, 2600);
 }
 // which: indice preciso, oppure -1 per uno a caso
 async function getSound(folder, which, fbKey, fbCount, fbMake) {
@@ -181,7 +230,7 @@ async function startAmbient() {
   const b = await getSound('ambiente', -1, 'amb', 1, () => synth.ambiente());
   ambPending = false;
   if (phase !== 'lobby' || ambVoice || location.hash === '#registrazioni') return;
-  ambVoice = play(b, { loop: true, fadeIn: 1.5, gain: .9 });
+  ambVoice = play(b, { loop: true, fadeIn: 1.5, gain: AMB_GAIN });
 }
 function stopAmbient(secs) { if (ambVoice && ctx) { fade(ambVoice, secs); ambVoice = null; } }
 
@@ -196,7 +245,7 @@ $('aiuto').addEventListener('click', () => {
 function enterStory() {
   if (phase !== 'lobby') return;
   ac();
-  phase = 'story'; resetSession();
+  phase = 'story'; resetSession(); preloadInstant();
   fadeAll(1.5); ambVoice = null; clearMusic();
   getSound('inizio', -1, 'inizio', 1, () => synth.cavalli(1)).then(b => { if (phase === 'story') play(b, { fadeIn: .4 }); });
   // dissolvenza luminosa di 2,5 s: il saloon si accende di luce, poi emerge la storia
@@ -213,6 +262,7 @@ function enterStory() {
 }
 const cavStart = $('cavStart');
 cavStart.addEventListener('click', enterStory);
+$('screen-lobby').addEventListener('pointerdown', () => { if (phase === 'lobby' && !ambVoice) { ac(); startAmbient(); } });
 
 /* ================= azioni della storia ================= */
 async function doMusic(id) {
@@ -231,16 +281,18 @@ async function doAccent(id, el) {
   if (id === 'volume') {
     volLow = !volLow; applyMusicLevel(VOL_FADE); draw(); return;
   }
-  if (id === 'tan') {
-    voices.forEach(v => fade(v, .02)); clearMusic(); draw();
-    play(await getSound('accenti/tan', -1, 'tan', 1, () => synth.taglio()));
-  } else if (id === 'drama') {
-    play(await getSound('accenti/drama', -1, 'drama', 1, () => synth.drama()));
-  } else if (id === 'crescendo') {
+  // Tan!, Drama e Battuta: l'accento parte subito e un istante dopo (STOP_DELAY) tutto il resto si ferma
+  if (id === 'tan' || id === 'drama' || id === 'battuta') {
+    const b = id === 'tan' ? await getSound('accenti/tan', -1, 'tan', 1, () => synth.taglio())
+      : id === 'drama' ? await getSound('accenti/drama', -1, 'drama', 1, () => synth.drama())
+      : await getSound('accenti/battuta', -1, 'battuta', 3, i => synth.battuta(i));
+    const v = play(b);
+    cutAllAfter(STOP_DELAY, v); clearMusic(); draw();
+    return;
+  }
+  if (id === 'crescendo') {
     const b = await getSound('accenti/crescendo', -1, 'crescendo', 1, () => synth.crescendo());
     play(b, { onEnd: (v, natural) => { if (natural) { voices.forEach(o => { if (o !== v) fade(o, .03); }); clearMusic(); draw(); } } });
-  } else if (id === 'battuta') {
-    play(await getSound('accenti/battuta', -1, 'battuta', 3, i => synth.battuta(i)));
   } else if (id === 'jolly') {
     doJolly();
   }
@@ -282,12 +334,49 @@ hintCard.addEventListener('click', hideHint);
 // toccando qualsiasi altro punto il suggerimento si chiude (e un eventuale tasto fa il suo lavoro)
 document.addEventListener('pointerdown', e => { if (!hintCard.hidden && !hintCard.contains(e.target)) hideHint(); }, true);
 
-// which: 0 = clip 1 (tocco normale), 1 = clip 2 (tenuto premuto 1,5 s)
+// which: 0 = clip 1 (tocco normale), 1 = clip 2 (tenuto premuto 1,5 s, con lo schermo che si illumina)
 async function doCavalli(which) {
   ac();
   fadeAll(1.5); clearMusic(); draw();
-  play(await getSound('cavalli', which, 'cav', 2, i => synth.cavalli(i)), { fadeIn: 1.2 });
+  const b = await getSound('cavalli', which, 'cav', 2, i => synth.cavalli(i));
+  if (which === 1) {
+    const v = play(b, { fadeIn: 1.2, onEnd: vv => { if (vv === flareVoice) { flareVoice = null; flareStop(false); } } });
+    flareVoice = v; flareStart(b.duration);
+  } else {
+    play(b, { fadeIn: 1.2 });
+  }
 }
+
+/* luce della clip 2: sale come nella transizione d'ingresso, pulsa piano e si spegne a fine clip */
+let flareAnim = null, flareTimer = null, flareVoice = null;
+function flareStart(durSec) {
+  const fl = $('flare'), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  flareStop(true);
+  fl.style.visibility = 'visible';
+  const a = fl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1150, easing: 'ease-in', fill: 'forwards' });
+  flareAnim = a;
+  a.onfinish = () => {
+    if (flareAnim !== a || reduce) return;
+    flareAnim = fl.animate([{ opacity: 1 }, { opacity: .75 }], { duration: 1300, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
+  };
+  flareTimer = setTimeout(() => flareStop(false), Math.max(1.4, durSec - .9) * 1000);
+}
+function flareStop(instant) {
+  clearTimeout(flareTimer);
+  const fl = $('flare');
+  if (!flareAnim) { if (instant) fl.style.visibility = ''; return; }
+  const cur = parseFloat(getComputedStyle(fl).opacity) || 0;
+  flareAnim.cancel(); flareAnim = null;
+  if (instant) { fl.style.visibility = ''; return; }
+  const out = fl.animate([{ opacity: cur }, { opacity: 0 }], { duration: 900, easing: 'ease-out', fill: 'forwards' });
+  out.onfinish = () => { if (!flareAnim) { fl.style.visibility = ''; out.cancel(); } };
+}
+
+/* icona del tasto Ai cavalli!: se c'è img/icona-cavalli.png prende il posto del ferro di cavallo */
+document.querySelectorAll('.cav-ic').forEach(img => {
+  const show = () => { img.hidden = false; const s = img.parentNode.querySelector('.cav-svg'); if (s) s.style.display = 'none'; };
+  if (img.complete && img.naturalWidth) show(); else img.addEventListener('load', show);
+});
 
 function togglePause() {
   if (!ctx) return;
