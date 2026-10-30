@@ -107,6 +107,26 @@ export function createSynth(ctx) {
       const f = 700 + p * 220, cnt = 3 + p;
       return render(.12 * cnt + .1, t => { const k = Math.floor(t / .12), lt = t - k * .12; if (k >= cnt || lt > .08) return 0; return wave('sq', f * (1 + .12 * k) * t) * Math.min(1, lt / .003) * Math.min(1, (.08 - lt) / .005); });
     },
+    squillo() {
+      // suoneria di un vecchio telefono a campanello: due squilli in 2 secondi
+      return render(2, t => {
+        const on = (t < .9) || (t > 1.15 && t < 1.95);
+        if (!on) return 0;
+        const st = t < .9 ? 0 : 1.15, lt = t - st;
+        const trill = Math.sin(TAU * 22 * t) > 0 ? 1 : .35;
+        const env = Math.min(1, lt / .01) * Math.min(1, ((t < .9 ? .9 : 1.95) - t) / .03);
+        return (Math.sin(TAU * 1080 * t) + .7 * Math.sin(TAU * 1320 * t) + .25 * Math.sin(TAU * 2600 * t)) * trill * env;
+      }, .7);
+    },
+    clic() {
+      // cornetta che si alza o si abbassa
+      let lp = 0;
+      return render(.09, t => { lp += .5 * (rnd() - lp); return (lp * 1.2 + .6 * Math.sin(TAU * 1200 * t)) * Math.exp(-t * 70) + .5 * Math.sin(TAU * 140 * t) * Math.exp(-t * 45); }, .8);
+    },
+    occupato() {
+      // segnale di occupato: tuu tuu tuu tuu (425 Hz, 0,25 s acceso e 0,25 s spento)
+      return render(2, t => { const k = t % .5; if (k > .25) return 0; return Math.sin(TAU * 425 * t) * Math.min(1, k / .008) * Math.min(1, (.25 - k) / .008); }, .6);
+    },
     ambiente() {
       // brusio di sala, qualche nota di pianoforte e un bicchiere: 8 secondi in loop
       const D = 8, notes = [[.2, 64], [.55, 67], [.9, 72], [1.6, 69], [2.4, 65], [2.75, 69], [3.1, 72], [3.9, 71], [4.6, 67], [4.95, 71], [5.3, 74], [6.1, 72], [6.5, 60]];

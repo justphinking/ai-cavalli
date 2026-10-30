@@ -34,6 +34,7 @@ audio/
   accenti/tan, drama, crescendo                  → 1 clip ciascuna
   accenti/battuta                                → 3 clip
   extra/                      → tutte le clip che vuoi, per i tasti "?"
+  chiamata/squillo, clic, occupato → suoni del tasto Chiamate (facoltativi)
 aiutini.txt                   → frasi dell'Aiutino (schermata 2)
 suggerimenti.txt              → frasi dei tasti "?" (storia)
 ```
@@ -45,9 +46,9 @@ suggerimenti.txt              → frasi dei tasti "?" (storia)
 - Testi: una frase per riga. Si modificano da GitHub: apri il file → icona della matita → scrivi → *Commit changes*.
 - Per caricare o sostituire un file dal sito di GitHub: entra nella cartella → *Add file → Upload files* → trascina → *Commit changes*. Dopo circa un minuto l'app aggiornata è online.
 
-## Imprevisti (registrazioni per il Jolly)
+## Chiamate
 
-Si registrano **direttamente sul telefono**, dal pulsante "registra un imprevisto" in alto a destra nella schermata del saloon. Restano solo su quel telefono, fino a 50.
+Si registrano **direttamente sul telefono**, dal pulsante "registra una chiamata" in alto a destra nella schermata del saloon. Restano solo su quel telefono, fino a 50.
 
 Attenzione: se si cancellano i dati del sito dal browser, le registrazioni si perdono.
 
@@ -66,7 +67,7 @@ Attenzione: se si cancellano i dati del sito dal browser, le registrazioni si pe
 - **Volume**: alterna il volume della musica tra alto (pieno) e basso (22%), con una dissolvenza di 1,5 secondi. All'inizio di ogni storia è su basso.
 - **Tan!**, **Drama** e **Battuta**: l'accento parte e un istante dopo (0,2 secondi) la musica e gli altri suoni si fermano di colpo.
 - **Crescendo**: suona sopra la musica e alla fine ferma tutto.
-- **Jolly**: suona uno degli imprevisti registrati, sopra la musica (che si abbassa un po'), senza ripetizioni. 3 volte per storia (i pallini in alto a destra).
+- **Chiamate**: fa arrivare una delle chiamate registrate: suoneria (2 s), clic, voce con filtro telefono, clic, segnale di occupato (2 s). La musica resta bassa per tutto il tempo. Senza ripetizioni, 3 volte per storia (i pallini in alto a destra).
 - **Pausa / Riprendi**: sospende tutto l'audio.
 - **Riavvia**: ferma tutto e torna alla schermata del saloon, riattivando tutti i tasti.
 

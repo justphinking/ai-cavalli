@@ -24,13 +24,13 @@ const ACC = [
   { id: 'drama', label: 'Drama', icon: BOLT2 },
   { id: 'crescendo', label: 'Crescendo', icon: 'M3 12l18-7 M3 12l18 7' },
   { id: 'battuta', label: 'Battuta', icon: 'M4 15c0-2 3.6-3.5 8-3.5s8 1.5 8 3.5-3.6 3.5-8 3.5-8-1.5-8-3.5z M4 15v3c0 2 3.6 3.5 8 3.5s8-1.5 8-3.5v-3 M9 10L6 3 M15 10l3-7' },
-  { id: 'jolly', label: 'Jolly', icon: 'M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z' }
+  { id: 'jolly', label: 'Chiamate', icon: 'M6.6 3.5h3l1.6 4.2-2 1.4a11.5 11.5 0 0 0 5.7 5.7l1.4-2 4.2 1.6v3a2 2 0 0 1-2.1 2A17 17 0 0 1 4.5 5.6a2 2 0 0 1 2.1-2.1z' }
 ];
 const Q = 'M8.8 9a3.3 3.3 0 1 1 4.6 3c-.9.4-1.4 1.2-1.4 2.1V15 M12 19h.01';
 const N_SYNTH_EXTRA = 20, JOLLY_MAX = 3, MAX_REC = 50, MAX_SEC = 30;
 const VOL_LOW = .22;           // opzione "volume basso": musica al 22%
 const VOL_FADE = 1.5;          // dissolvenza del selettore volume, in secondi
-const DUCK = .35;              // durante "?" audio e Jolly la musica scende al 35%
+const DUCK = .35;              // durante "?" audio e Chiamate la musica scende al 35%
 const AMB_GAIN = 1.5;          // volume dell'ambiente del saloon (schermata 2)
 
 const svg = (d, s, w) => '<svg width="' + (s || 24) + '" height="' + (s || 24) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -60,7 +60,12 @@ const readLines = t => t.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.s
 fetch('audio-manifest.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).then(m => { files = m || {}; warmCache(); }).catch(() => { });
 fetch('aiutini.txt', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '').then(t => { const l = readLines(t); if (l.length) aiutini = l; }).catch(() => { });
 fetch('suggerimenti.txt', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '').then(t => { const l = readLines(t); if (l.length) suggerimenti = l; }).catch(() => { });
-listRecs().then(r => { recs = r.sort((a, b) => a.created - b.created); draw(); drawRec(); }).catch(() => { });
+listRecs().then(r => {
+  recs = r.sort((a, b) => a.created - b.created);
+  // i vecchi titoli automatici "Imprevisto N" diventano "Chiamata N"
+  recs.forEach(x => { const m = x.title.match(/^Imprevisto (\d+)$/); if (m) { x.title = 'Chiamata ' + m[1]; saveRec(x).catch(() => { }); } });
+  draw(); drawRec();
+}).catch(() => { });
 
 /* ================= motore audio ================= */
 let ctx = null, master = null, synth = null, needRebuild = false;
@@ -103,12 +108,13 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pageshow', e => { if (e.persisted && ctx && !paused && ctx.state !== 'running') needRebuild = true; });
 function play(buffer, o) {
   o = o || {};
-  const now = ctx.currentTime, src = ctx.createBufferSource(), g = ctx.createGain();
+  // o.at: istante di partenza (sull'orologio audio); o.dest: dove mandare il suono (es. il filtro telefono)
+  const now = Math.max(ctx.currentTime, o.at || 0), src = ctx.createBufferSource(), g = ctx.createGain();
   src.buffer = buffer; src.loop = !!o.loop;
   const lvl = o.gain == null ? 1 : o.gain;
   if (o.fadeIn) { g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(lvl, now + o.fadeIn); } else g.gain.value = lvl;
-  src.connect(g); g.connect(master);
-  const v = { src, g, endAt: now + buffer.duration };
+  src.connect(g); g.connect(o.dest || master);
+  const v = { src, g, endAt: now + (o.loop ? 1e9 : buffer.duration) };
   voices.add(v);
   src.onended = () => {
     voices.delete(v);
@@ -298,13 +304,61 @@ async function doAccent(id, el) {
   }
 }
 
-// Jolly: una registrazione a caso, senza ripetizioni, fino a 3 volte per storia
+// Chiamate: una chiamata registrata a caso, senza ripetizioni, fino a 3 volte per storia.
+// Sequenza: suoneria 2 s → clic → voce col filtro telefono → clic → occupato 2 s. La musica resta bassa per tutto il tempo.
 async function doJolly() {
   const pool = recs.filter(r => !jollyUsed.has(r.id));
   if (phase !== 'story' || jollyCount >= JOLLY_MAX || !pool.length) return;
   const r = pickFrom(pool);
   jollyCount++; jollyUsed.add(r.id); draw();
-  try { playOver(await loadRec(r)); } catch (e) { }
+  let voice;
+  try { voice = await loadRec(r); } catch (e) { return; }
+  const ring = await getSound('chiamata/squillo', -1, 'ring', 1, () => synth.squillo());
+  const click = await getSound('chiamata/clic', -1, 'click', 1, () => synth.clic());
+  const busy = await getSound('chiamata/occupato', -1, 'busy', 1, () => synth.occupato());
+  playCall(voice, ring, click, busy);
+}
+// filtro "telefono", a metà tra una linea pulita e un apparecchio d'epoca
+function phoneChain() {
+  const inp = ctx.createGain();
+  const hp1 = ctx.createBiquadFilter(); hp1.type = 'highpass'; hp1.frequency.value = 320; hp1.Q.value = .7;
+  const hp2 = ctx.createBiquadFilter(); hp2.type = 'highpass'; hp2.frequency.value = 320; hp2.Q.value = .7;
+  const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 1700; mid.Q.value = .9; mid.gain.value = 5;
+  const lp1 = ctx.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = 3300; lp1.Q.value = .7;
+  const lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 3300; lp2.Q.value = .7;
+  const sat = ctx.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+  sat.curve = curve; sat.oversample = '2x';
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -24; comp.ratio.value = 4; comp.attack.value = .005; comp.release.value = .15;
+  const out = ctx.createGain(); out.gain.value = 2.2;   // recupera il volume tolto dal filtro
+  inp.connect(hp1); hp1.connect(hp2); hp2.connect(mid); mid.connect(lp1); lp1.connect(lp2); lp2.connect(sat); sat.connect(comp); comp.connect(out); out.connect(master);
+  return inp;
+}
+let lineNoiseBuf = null;
+function lineNoise() {
+  if (lineNoiseBuf && lineNoiseBuf.sampleRate === ctx.sampleRate) return lineNoiseBuf;
+  const n = ctx.sampleRate * 2, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+  let lp = 0;
+  for (let i = 0; i < n; i++) { lp += .3 * ((Math.random() * 2 - 1) - lp); d[i] = lp * .5 + (Math.random() < .0004 ? (Math.random() * 2 - 1) * .8 : 0); }
+  return (lineNoiseBuf = b);
+}
+function playCall(voice, ring, click, busy) {
+  ac();
+  const tel = phoneChain();
+  const t0 = ctx.currentTime + .05;
+  const tPick = t0 + Math.min(ring.duration, 2);
+  const tVoice = tPick + click.duration * .6;
+  const tEnd = tVoice + voice.duration;
+  const tBusy = tEnd + click.duration + .1;
+  duck++; applyMusicLevel(.25);
+  const ringV = play(ring, { at: t0 }); try { ringV.src.stop(tPick); } catch (e) { }
+  play(click, { at: tPick, dest: tel, gain: .9 });
+  play(voice, { at: tVoice, dest: tel });
+  const nz = play(lineNoise(), { at: tVoice, dest: tel, loop: true, gain: .035 }); try { nz.src.stop(tEnd); } catch (e) { }
+  play(click, { at: tEnd + .02, dest: tel, gain: .9 });
+  const busyV = play(busy, { at: tBusy, dest: tel, gain: .8, onEnd: () => { duck = Math.max(0, duck - 1); applyMusicLevel(.6); } });
+  try { busyV.src.stop(tBusy + Math.min(busy.duration, 2)); } catch (e) { }
 }
 
 // tasti "?": in ogni storia 2 danno una clip audio e 2 un suggerimento, in ordine casuale
@@ -489,7 +543,7 @@ function draw() {
     const left = JOLLY_MAX - jollyCount, avail = recs.some(r => !jollyUsed.has(r.id));
     jollyBtn.disabled = left <= 0 || !avail;
     jollyBtn.querySelectorAll('.pips i').forEach((p, k) => p.classList.toggle('spent', k >= left));
-    jollyBtn.setAttribute('aria-label', 'Jolly, ' + (recs.length ? left + ' rimasti' : 'nessuna registrazione'));
+    jollyBtn.setAttribute('aria-label', 'Chiamate, ' + (recs.length ? left + ' rimaste' : 'nessuna chiamata registrata'));
   }
   $('aiuto').disabled = aiutoUsed;
   $('pp').innerHTML = paused ? svg('M7 5l12 7-12 7z', 18, 2) + 'Riprendi' : svg('M8 5v14 M16 5v14', 18, 2.4) + 'Pausa';
@@ -539,10 +593,10 @@ async function startRec() {
     const dur = (performance.now() - t0) / 1000;
     const blob = new Blob(chunks, { type: mr.mimeType || type || 'audio/webm' });
     if (blob.size < 500 || dur < .4) { drawRec(); return; }
-    const n = recs.reduce((m, r) => { const k = parseInt((r.title.match(/^(?:Registrazione|Imprevisto) (\d+)$/) || [])[1], 10); return k > m ? k : m; }, 0) + 1;
-    const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'Imprevisto ' + n, created: Date.now(), dur, blob };
+    const n = recs.reduce((m, r) => { const k = parseInt((r.title.match(/^(?:Registrazione|Imprevisto|Chiamata) (\d+)$/) || [])[1], 10); return k > m ? k : m; }, 0) + 1;
+    const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'Chiamata ' + n, created: Date.now(), dur, blob };
     recs.push(r);
-    try { await saveRec(r); } catch (e) { showMsg('Non sono riuscito a salvare la registrazione sul telefono. Controlla lo spazio libero.'); }
+    try { await saveRec(r); } catch (e) { showMsg('Non sono riuscito a salvare la chiamata sul telefono. Controlla lo spazio libero.'); }
     drawRec(); draw();
   };
   mr.start();
@@ -573,9 +627,10 @@ async function togglePreview(r) {
   stopPreview(); ac();
   try {
     const b = await loadRec(r);
-    const v = play(b, { onEnd: () => { if (preview && preview.voice === v) { preview = null; markPreview(); } } });
+    // l'ascolto di prova passa già dal filtro telefono, come uscirà dal tasto Chiamate
+    const v = play(b, { dest: phoneChain(), onEnd: () => { if (preview && preview.voice === v) { preview = null; markPreview(); } } });
     preview = { id: r.id, voice: v }; markPreview();
-  } catch (e) { showMsg('Questa registrazione non si riesce a riprodurre su questo telefono.'); }
+  } catch (e) { showMsg('Questa chiamata non si riesce a riprodurre su questo telefono.'); }
 }
 
 function drawRec() {
@@ -583,10 +638,10 @@ function drawRec() {
   const full = recs.length >= MAX_REC;
   recBtn.disabled = full && !recording;
   recBtn.classList.toggle('on', !!recording);
-  recBtn.setAttribute('aria-label', recording ? 'Ferma la registrazione' : 'Registra');
+  recBtn.setAttribute('aria-label', recording ? 'Ferma la registrazione' : 'Registra una chiamata');
   if (!recording) {
-    $('recState').textContent = full ? 'Hai 50 imprevisti' : 'Registra un imprevisto';
-    $('recHint').textContent = full ? 'Cancellane uno per registrarne un altro.' : 'Tocca il pulsante, di\' la frase, tocca di nuovo per fermare. Massimo 30 secondi.';
+    $('recState').textContent = full ? 'Hai 50 chiamate' : 'Registra una chiamata';
+    $('recHint').textContent = full ? 'Cancellane una per registrarne un\'altra.' : 'Tocca il pulsante, di\' la frase, tocca di nuovo per fermare. Massimo 30 secondi.';
   } else {
     $('recHint').textContent = 'Tocca di nuovo per fermare e salvare.';
     tick();
@@ -598,7 +653,7 @@ function drawRec() {
     const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'play'; pb.dataset.id = r.id; pb.dataset.title = r.title;
     pb.addEventListener('click', () => togglePreview(r));
     const inp = document.createElement('input'); inp.className = 'title'; inp.type = 'text'; inp.value = r.title; inp.id = 'title-' + r.id;
-    inp.setAttribute('aria-label', 'Titolo dell\'imprevisto'); inp.maxLength = 60;
+    inp.setAttribute('aria-label', 'Titolo della chiamata'); inp.maxLength = 60;
     inp.addEventListener('change', () => { const v = inp.value.trim(); if (v) { r.title = v; pb.dataset.title = v; saveRec(r).catch(() => { }); } else inp.value = r.title; });
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     const du = document.createElement('span'); du.className = 'dur'; du.textContent = fmt(r.dur || 0);
